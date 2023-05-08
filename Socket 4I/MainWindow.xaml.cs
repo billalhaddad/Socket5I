@@ -23,8 +23,10 @@ namespace Socket_4I
     /// </summary>
     public partial class MainWindow : Window
     {
+
         Rubrica rubrica;
         Socket socket = null;
+        private DispatcherTimer _timer;
         public MainWindow()
         {
             InitializeComponent();
@@ -39,8 +41,31 @@ namespace Socket_4I
             IP.Content = "Ip: "+local_address;
             PORTA.Content = "Porta: "+r;
             socket.Bind(local_endpoint);
+            MyViewModel();
             Task.Run(RicevimentoMessaggio);
             socket.EnableBroadcast = true;
+        }
+        
+
+        public void MyViewModel()
+        {
+            _timer = new DispatcherTimer();
+            _timer.Tick += OnTimerTick;
+            _timer.Interval = TimeSpan.FromMilliseconds(100);
+            _timer.Start();
+        }
+
+        private void OnTimerTick(object sender, EventArgs e)
+        {
+            if (contatti.SelectedIndex==-1)
+            {
+                return;
+            }
+            lstMessaggi.Items.Clear();
+            foreach(var item in (contatti.SelectedItem as Contatto).Messaggi)
+            {
+                lstMessaggi.Items.Add(item);
+            }
         }
 
         private Task RicevimentoMessaggio()
@@ -58,21 +83,18 @@ namespace Socket_4I
                 List<Contatto> temp= new List<Contatto>();
                 foreach (Contatto c in rubrica._contatti)
                 {
-                    contatti.Dispatcher.Invoke(() =>
+                    if (c.IndirizzoIp.Address==((IPEndPoint)remoreEndPoint).Address.Address && c.IndirizzoIPEndPoint.Port==((IPEndPoint)remoreEndPoint).Port)
                     {
-                        if (c.IndirizzoIp==((IPEndPoint)remoreEndPoint).Address && c.IndirizzoIPEndPoint.Port==((IPEndPoint)remoreEndPoint).Port)
-                        {
-                            c.AggiungiMessaggio(false, messaggio);
-                            lstMessaggi.ItemsSource = rubrica._contatti[contatti.SelectedIndex].Messaggi;
-                            nuovoContatto=false;
-                        }
-                    });
+                        c.AggiungiMessaggio(false, messaggio);
+                        nuovoContatto=false;
+                    }
                 }
                 if (nuovoContatto)
                 {
                     AggiuntaContatto(remoreEndPoint as IPEndPoint, messaggio, temp);
                 }
                 rubrica._contatti.AddRange(temp);
+                
             }
         }
         private void AggiuntaContatto(IPEndPoint temp,string messaggio,List<Contatto> contatti)
@@ -80,15 +102,9 @@ namespace Socket_4I
             MessageBoxResult result= MessageBox.Show("una persona che non hai nei contatti vuole mandarti un messaggio, vuoi aggiungerlo ?", "Errore", MessageBoxButton.YesNo);
             if (result==MessageBoxResult.Yes)
             {
-                Contatto c= new Contatto(temp.Address.ToString(), temp.Address, temp);
+                Contatto c = new Contatto(temp.Address.ToString(), temp.Address, temp);
                 contatti.Add(c);
                 c.AggiungiMessaggio(false, messaggio);
-                lstMessaggi.Dispatcher.Invoke(() =>
-                {
-                    lstMessaggi.ItemsSource = null;
-                    lstMessaggi.ItemsSource=c.Messaggi;
-                }
-            );
             }
 
         }
@@ -101,11 +117,8 @@ namespace Socket_4I
             byte[] messaggio = Encoding.UTF8.GetBytes(txtMessaggio.Text);
             socket.SendTo(messaggio, remote_endpoint);
             c.AggiungiMessaggio(true, temp);
-            lstMessaggi.Dispatcher.Invoke(() => 
-            {
-                lstMessaggi.ItemsSource = null;
-                lstMessaggi.ItemsSource=c.Messaggi; }
-            );
+            txtMessaggio.Text="";
+
         }
         private void Button_Click(object sender, RoutedEventArgs e)
         {
@@ -137,14 +150,11 @@ namespace Socket_4I
         {
             if (contatti.SelectedItems!=null)
             {
-                lstMessaggi.ItemsSource = null;
-                lstMessaggi.ItemsSource = rubrica._contatti[contatti.SelectedIndex].Messaggi;
                 txtMessaggio.IsEnabled = true;
                 btnInvia.IsEnabled=true;
             }
             else
             {
-                lstMessaggi.ItemsSource = null;
                 btnInvia.IsEnabled = false;
                 txtMessaggio.IsEnabled = false;
 
