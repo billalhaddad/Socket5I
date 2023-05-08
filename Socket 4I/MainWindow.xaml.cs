@@ -97,13 +97,17 @@ namespace Socket_4I
                 
             }
         }
-        private void AggiuntaContatto(IPEndPoint temp,string messaggio,List<Contatto> contatti)
+        private void AggiuntaContatto(IPEndPoint temp,string messaggio,List<Contatto> _contatti)
         {
             MessageBoxResult result= MessageBox.Show("una persona che non hai nei contatti vuole mandarti un messaggio, vuoi aggiungerlo ?", "Errore", MessageBoxButton.YesNo);
             if (result==MessageBoxResult.Yes)
             {
                 Contatto c = new Contatto(temp.Address.ToString(), temp.Address, temp);
-                contatti.Add(c);
+                _contatti.Add(c);
+                contatti.Dispatcher.Invoke(() =>
+                {
+                    contatti.Items.Add(c);
+                });
                 c.AggiungiMessaggio(false, messaggio);
             }
 
